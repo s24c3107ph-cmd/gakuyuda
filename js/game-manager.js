@@ -64,6 +64,9 @@ class GameManager {
       romajiTyped: document.getElementById('play-romaji-typed'),
       romajiRemaining: document.getElementById('play-romaji-remaining'),
       
+      mainCard: document.querySelector('.play-main-card'),
+      hintGuide: document.getElementById('play-hint-guide'),
+      
       // リザルト画面
       resultScore: document.getElementById('result-score'),
       resultAccuracy: document.getElementById('result-accuracy'),
@@ -193,6 +196,7 @@ class GameManager {
     this.problemStartTime = Date.now();
     this.problemMistypes = 0;
     this.problemTotalKeys = 0;
+    this.isNameRevealed = false;
 
     // タイピングエンジンに出題のかなを設定
     this.typingEngine.setTargetKana(this.currentMember.kana);
@@ -236,10 +240,22 @@ class GameManager {
       }
     }
 
+    // 名前の表示/非表示（ヒント）制御
+    if (isPractice || this.isNameRevealed) {
+      this.dom.mainCard.classList.remove('name-hidden');
+      this.dom.hintGuide.classList.add('hidden');
+    } else {
+      this.dom.mainCard.classList.add('name-hidden');
+      this.dom.hintGuide.classList.remove('hidden');
+    }
+
     // タイピングガイドの表示制御
-    if (isHard) {
-      // 本気モード: ひらがな・ローマ字DOMを完全に非表示
-      this.dom.typingContainer.classList.add('hard-mode-hidden');
+    if (isHard && !this.isNameRevealed) {
+      // 本気モードかつ未リビール時は入力ガイドを完全に非表示にできるが、
+      // CSSのname-hiddenで隠れるのでそのままでOK
+      this.dom.typingContainer.classList.remove('hard-mode-hidden');
+      this.dom.kanaDisplay.textContent = m.kana;
+      this.updateTypingGuideUI();
     } else {
       this.dom.typingContainer.classList.remove('hard-mode-hidden');
       this.dom.kanaDisplay.textContent = m.kana;
@@ -262,12 +278,37 @@ class GameManager {
   handleKeyPress(key) {
     if (!this.isPlaying || !this.currentMember) return;
 
+    // Enterでパス（スキップ）
+    if (key === 'Enter') {
+      window.soundManager.playMissSound();
+      this.problemMistypes++;
+      this.totalMistypes++;
+      this.combo = 0;
+      this.triggerMistypeEffect();
+      this.updateScoreUI();
+      this.nextProblem();
+      return;
+    }
+
+    // Spaceでヒント表示
+    if (key === ' ' && !this.isNameRevealed && this.mode !== 'practice') {
+      this.isNameRevealed = true;
+      this.renderProblemUI();
+      return;
+    }
+
     this.problemTotalKeys++;
 
     // タイピング判定
     const isCorrect = this.typingEngine.inputKey(key);
 
     if (isCorrect) {
+      // 最初の正解打鍵で自動的に名前をリビールする
+      if (!this.isNameRevealed && this.mode !== 'practice') {
+        this.isNameRevealed = true;
+        this.renderProblemUI();
+      }
+
       // 正解打鍵
       this.totalCorrectKeys++;
       this.combo++;

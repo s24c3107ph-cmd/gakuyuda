@@ -42,7 +42,7 @@
         <button class="mode-tab" data-mode="hard">🔥 本気 (45s)</button>
       </div>
       <div id="mode-description" class="mode-description">
-        ⚡ 制限時間60秒 / ひらがな・ローマ字表示ありの標準本番モード
+        ⚡ 制限時間60秒 / 名前非表示（所属ヒントあり）。Spaceキーで名前を確認できます。
       </div>
 
       <!-- 部署コース選択 -->
@@ -173,6 +173,12 @@
           <div class="typing-romaji-line">
             <span id="play-romaji-typed" class="romaji-typed"></span><span id="play-romaji-remaining" class="romaji-remaining">sakai ryouta</span>
           </div>
+        </div>
+        
+        <!-- 追加: ヒント・スキップ案内 -->
+        <div id="play-hint-guide" class="hint-guide-box hidden">
+          <span class="guide-key">Space</span> で名前を表示 / 
+          <span class="guide-key">Enter</span> でパス
         </div>
       </div>
     </main>
