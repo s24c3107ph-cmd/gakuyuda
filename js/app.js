@@ -95,20 +95,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // 3. 部署コースカードの選択
-  dom.courseCards.forEach(card => {
-    card.addEventListener('click', () => {
-      dom.courseCards.forEach(c => c.classList.remove('is-selected'));
-      card.classList.add('is-selected');
-      currentDept = card.dataset.dept;
-      window.gameManager.setDepartment(currentDept);
-    });
-  });
-
-  // 4. ゲームスタートボタン
+  // 3. ゲームスタートボタン
   dom.btnStart.addEventListener('click', () => {
     window.gameManager.setMode(currentMode);
-    window.gameManager.setDepartment(currentDept);
+    window.gameManager.setDepartment('ALL');
     window.gameManager.startCountdown(() => {
       window.gameManager.startGame(allMembers);
     });
