@@ -166,6 +166,9 @@ class GameManager {
     this.updateScoreUI();
     this.updateTimerUI();
 
+    // 出題プールの全画像をバックグラウンドで先読み（プリロード）
+    this.preloadImages(this.membersPool);
+
     // 最初の出題
     this.nextProblem();
 
@@ -181,6 +184,20 @@ class GameManager {
         this.updateTimerUI();
       }
     }, tickIntervalMs);
+  }
+
+  /**
+   * 画像のバックグラウンド先読み（プリロード）
+   */
+  preloadImages(members) {
+    if (!members || !members.length) return;
+    // 優先度高で先頭20名、その後全体をプリロード
+    members.forEach((m, idx) => {
+      if (!m || !m.kanji) return;
+      const cleanName = m.kanji.replace(/\s+/g, '');
+      const img = new Image();
+      img.src = `images/faces_webp/${cleanName}.webp`;
+    });
   }
 
   /**
@@ -203,6 +220,11 @@ class GameManager {
 
     // 画面表示更新
     this.renderProblemUI();
+
+    // 次の5名の画像を念のため先読み
+    if (this.currentQueue.length > 0) {
+      this.preloadImages(this.currentQueue.slice(0, 5));
+    }
   }
 
   /**
@@ -266,24 +288,14 @@ class GameManager {
     // 名前の表示/非表示（ヒント）制御
     if (isPractice || this.isNameRevealed) {
       this.dom.mainCard.classList.remove('name-hidden');
-      this.dom.hintGuide.classList.add('hidden');
     } else {
       this.dom.mainCard.classList.add('name-hidden');
-      this.dom.hintGuide.classList.remove('hidden');
     }
 
     // タイピングガイドの表示制御
-    if (isHard && !this.isNameRevealed) {
-      // 本気モードかつ未リビール時は入力ガイドを完全に非表示にできるが、
-      // CSSのname-hiddenで隠れるのでそのままでOK
-      this.dom.typingContainer.classList.remove('hard-mode-hidden');
-      this.dom.kanaDisplay.textContent = m.kana;
-      this.updateTypingGuideUI();
-    } else {
-      this.dom.typingContainer.classList.remove('hard-mode-hidden');
-      this.dom.kanaDisplay.textContent = m.kana;
-      this.updateTypingGuideUI();
-    }
+    this.dom.typingContainer.classList.remove('hard-mode-hidden');
+    this.dom.kanaDisplay.textContent = m.kana;
+    this.updateTypingGuideUI();
   }
 
   /**
@@ -303,6 +315,15 @@ class GameManager {
 
     // Enterでパス（スキップ）
     if (key === 'Enter') {
+      // 要復習に記録
+      window.reviewManager.logAnswer({
+        member: this.currentMember,
+        timeTaken: Date.now() - this.problemStartTime,
+        mistypeCount: this.problemMistypes + 1,
+        totalKeyCount: this.problemTotalKeys,
+        isSkipped: true
+      });
+
       window.soundManager.playMissSound();
       this.problemMistypes++;
       this.totalMistypes++;
@@ -460,11 +481,23 @@ class GameManager {
       this.timerInterval = null;
     }
 
+    // タイムアップ時、未クリアだったメンバーを要復習に記録
+    if (this.currentMember && (!this.typingEngine || !this.typingEngine.isComplete)) {
+      window.reviewManager.logAnswer({
+        member: this.currentMember,
+        timeTaken: Date.now() - this.problemStartTime,
+        mistypeCount: this.problemMistypes,
+        totalKeyCount: this.problemTotalKeys,
+        isUnfinished: true
+      });
+    }
+
     window.soundManager.playFinishFanfare();
 
     // 画面切り替え
     this.dom.screenPlay.classList.add('hidden');
     this.dom.screenResult.classList.remove('hidden');
+
 
     // 計算
     const totalKeys = this.totalCorrectKeys + this.totalMistypes;

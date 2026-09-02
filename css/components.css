@@ -459,14 +459,18 @@
 
 /* モード別非表示ステート */
 .name-hidden .member-kanji {
-  filter: blur(8px);
-  opacity: 0.5;
+  filter: blur(12px);
+  opacity: 0.2;
   user-select: none;
+  pointer-events: none;
 }
 
-.name-hidden .typing-guide-box {
+.name-hidden .typing-kana {
   opacity: 0;
-  pointer-events: none;
+}
+
+.name-hidden .romaji-remaining {
+  opacity: 0;
 }
 
 .hard-mode-hidden {
@@ -485,6 +489,7 @@
 .hint-guide-box.hidden {
   display: none;
 }
+
 
 .guide-key {
   display: inline-block;
