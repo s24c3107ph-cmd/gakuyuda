@@ -59,21 +59,49 @@ class TypingEngine {
     };
 
     this.currentKana = '';
-    this.nodes = [];
-    this.currentNodeIndex = 0;
+    this.candidateTrackers = [];
+    this.activeTracker = null;
     this.typedString = '';
     this.isComplete = false;
   }
 
   /**
-   * かな文字列（例: "さかい りょうた"）を設定してノードグラフを構築
+   * かな文字列またはメンバーオブジェクトからターゲット候補群を構築
    */
-  setTargetKana(kana) {
-    this.currentKana = kana;
+  setTargetKana(kana, member = null) {
+    this.currentKana = (kana || '').trim();
     this.typedString = '';
     this.isComplete = false;
-    this.currentNodeIndex = 0;
-    this.nodes = this._buildNodes(kana);
+
+    // 候補リストを作成
+    const candidates = new Set();
+    const cleanFull = this.currentKana.replace(/[\s　]+/g, '');
+    if (cleanFull) candidates.add(cleanFull);
+    if (this.currentKana) candidates.add(this.currentKana);
+
+    // スペース区切りがある場合、名字と名前を個別候補に追加
+    const parts = this.currentKana.split(/[\s　]+/).filter(Boolean);
+    if (parts.length >= 2) {
+      candidates.add(parts[0]); // 苗字 (例: さかい)
+      candidates.add(parts[1]); // 名前 (例: りょうた)
+      candidates.add(parts[1] + parts[0]); // 名姓 (例: りょうたさかい)
+    }
+
+    if (member) {
+      if (member.last_name_kana) candidates.add(member.last_name_kana.trim());
+      if (member.first_name_kana) candidates.add(member.first_name_kana.trim());
+    }
+
+    // 各候補に対するノードリストを作成
+    this.candidateTrackers = Array.from(candidates).map(cand => ({
+      kana: cand,
+      nodes: this._buildNodes(cand),
+      nodeIndex: 0,
+      isComplete: false
+    })).filter(t => t.nodes.length > 0);
+
+    // デフォルトのアクティブトラッカー
+    this.activeTracker = this.candidateTrackers[0] || null;
   }
 
   /**
@@ -100,9 +128,20 @@ class TypingEngine {
 
       const one = kana[i];
 
+      // スペース
+      if (one === ' ' || one === '　') {
+        nodes.push({
+          kana: ' ',
+          patterns: [' '],
+          matchedInput: '',
+          isSpace: true
+        });
+        i++;
+        continue;
+      }
+
       // 促音「っ」の処理
       if (one === 'っ') {
-        // 次の文字の子音を先頭に追加できるパターンを生成
         const nextKana1 = kana.substr(i + 1, 1);
         const nextKana2 = kana.substr(i + 1, 2);
         const nextPatterns = this.kanaTable[nextKana2] || this.kanaTable[nextKana1] || [];
@@ -130,11 +169,10 @@ class TypingEngine {
 
       // 撥音「ん」の処理
       if (one === 'ん') {
-        // 次が母音・ヤ行・ナ行・スペース・末尾以外なら 'n' 1打でも受け付け可能
         const nextKana = kana.substr(i + 1, 1);
         let allowSingleN = false;
         if (i + 1 === kana.length) {
-          allowSingleN = false; // 末尾のんはnn推奨
+          allowSingleN = false;
         } else {
           const nextPats = this.kanaTable[kana.substr(i + 1, 2)] || this.kanaTable[nextKana] || [];
           const hasVowelOrYorN = nextPats.some(p => {
@@ -175,46 +213,69 @@ class TypingEngine {
   }
 
   /**
-   * キー入力の判定
-   * @param {string} key - 入力された1文字（アルファベット、記号、スペース）
-   * @returns {boolean} 正解打鍵なら true, ミスなら false
+   * キー入力の判定（複数候補の中からマッチするものを探索して進める）
    */
   inputKey(key) {
-    if (this.isComplete || this.currentNodeIndex >= this.nodes.length) {
+    if (this.isComplete || this.candidateTrackers.length === 0) {
       return false;
     }
 
     const lowerKey = key.toLowerCase();
-    const node = this.nodes[this.currentNodeIndex];
-    const candidateInput = node.matchedInput + lowerKey;
+    const survivingTrackers = [];
 
-    // 現在のノードのパターン群の中で、candidateInput で始まるものがあるか
-    const matchedPatterns = node.patterns.filter(pat => pat.toLowerCase().startsWith(candidateInput));
+    for (const tracker of this.candidateTrackers) {
+      if (tracker.isComplete) continue;
 
-    if (matchedPatterns.length > 0) {
-      // 該当あり！
-      node.matchedInput = candidateInput;
-      node.patterns = matchedPatterns; // 候補を絞り込む
-      this.typedString += lowerKey;
-
-      // 完全一致したパターンがあるか
-      const exactMatch = matchedPatterns.find(pat => pat.toLowerCase() === candidateInput);
-      if (exactMatch) {
-        // 次のノードへ進む
-        this.currentNodeIndex++;
-        if (this.currentNodeIndex >= this.nodes.length) {
-          this.isComplete = true;
-        }
+      // 現在位置がスペースノードで、入力がスペースでない場合は自動スキップして次ノードへ進める
+      if (tracker.nodeIndex < tracker.nodes.length && tracker.nodes[tracker.nodeIndex].isSpace && lowerKey !== ' ') {
+        tracker.nodes[tracker.nodeIndex].matchedInput = ' ';
+        tracker.nodeIndex++;
       }
-      return true;
+
+      if (tracker.nodeIndex >= tracker.nodes.length) {
+        tracker.isComplete = true;
+        continue;
+      }
+
+      const node = tracker.nodes[tracker.nodeIndex];
+
+      // スペースキー打鍵の場合
+      if (lowerKey === ' ' && node.isSpace) {
+        node.matchedInput = ' ';
+        tracker.nodeIndex++;
+        if (tracker.nodeIndex >= tracker.nodes.length) {
+          tracker.isComplete = true;
+        }
+        survivingTrackers.push(tracker);
+        continue;
+      }
+
+      const candidateInput = node.matchedInput + lowerKey;
+      const matchedPatterns = node.patterns.filter(pat => pat.toLowerCase().startsWith(candidateInput));
+
+      if (matchedPatterns.length > 0) {
+        node.matchedInput = candidateInput;
+        node.patterns = matchedPatterns;
+
+        const exactMatch = matchedPatterns.find(pat => pat.toLowerCase() === candidateInput);
+        if (exactMatch) {
+          tracker.nodeIndex++;
+          // 次のノードがスペースなら、スペースを打たなくても良いように準備
+          if (tracker.nodeIndex >= tracker.nodes.length) {
+            tracker.isComplete = true;
+          }
+        }
+        survivingTrackers.push(tracker);
+      }
     }
 
-    // スペースキーが入力された場合、現在地がスペースノードならスキップ
-    if (key === ' ' && node.kana === ' ') {
-      node.matchedInput = ' ';
-      this.typedString += ' ';
-      this.currentNodeIndex++;
-      if (this.currentNodeIndex >= this.nodes.length) {
+    if (survivingTrackers.length > 0) {
+      this.candidateTrackers = survivingTrackers;
+      this.activeTracker = survivingTrackers[0];
+      this.typedString += lowerKey;
+
+      // いずれかの候補が完了したかチェック
+      if (survivingTrackers.some(t => t.isComplete)) {
         this.isComplete = true;
       }
       return true;
@@ -227,16 +288,21 @@ class TypingEngine {
    * 現在の表示用ローマ字ガイド文字列と状態を取得
    */
   getDisplayState() {
+    if (!this.activeTracker) {
+      return { typedPart: '', remainingPart: '', fullRomaji: '', isComplete: this.isComplete, progress: 0 };
+    }
+
+    const tracker = this.activeTracker;
     let typedPart = '';
     let remainingPart = '';
 
-    for (let i = 0; i < this.nodes.length; i++) {
-      const node = this.nodes[i];
+    for (let i = 0; i < tracker.nodes.length; i++) {
+      const node = tracker.nodes[i];
       const preferredPattern = node.patterns[0] || '';
 
-      if (i < this.currentNodeIndex) {
+      if (i < tracker.nodeIndex) {
         typedPart += node.matchedInput || preferredPattern;
-      } else if (i === this.currentNodeIndex) {
+      } else if (i === tracker.nodeIndex) {
         typedPart += node.matchedInput;
         remainingPart += preferredPattern.substring(node.matchedInput.length);
       } else {
@@ -249,7 +315,7 @@ class TypingEngine {
       remainingPart: remainingPart,
       fullRomaji: typedPart + remainingPart,
       isComplete: this.isComplete,
-      progress: (this.currentNodeIndex / (this.nodes.length || 1))
+      progress: (tracker.nodeIndex / (tracker.nodes.length || 1))
     };
   }
 }

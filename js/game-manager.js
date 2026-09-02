@@ -198,8 +198,8 @@ class GameManager {
     this.problemTotalKeys = 0;
     this.isNameRevealed = false;
 
-    // タイピングエンジンに出題のかなを設定
-    this.typingEngine.setTargetKana(this.currentMember.kana);
+    // タイピングエンジンに出題のかなを設定（名字・名前・フルネームの全候補を自動認識）
+    this.typingEngine.setTargetKana(this.currentMember.kana, this.currentMember);
 
     // 画面表示更新
     this.renderProblemUI();
