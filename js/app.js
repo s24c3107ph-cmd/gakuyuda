@@ -6,8 +6,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // DOM初期化
   window.gameManager.initDOM();
 
-  // ランキングデータのリセット（仮データを一掃。バージョンが変わった時のみ実行）
-  const RANKING_RESET_VERSION = 'v2-real';
+  // ランキングの初期クリア（古い偽スコアキャッシュを確実に一掃）
+  const RANKING_RESET_VERSION = 'v3-clean-real';
   if (localStorage.getItem('gakuyu_ranking_ver') !== RANKING_RESET_VERSION) {
     localStorage.removeItem('gakuyu_rankings');
     localStorage.setItem('gakuyu_ranking_ver', RANKING_RESET_VERSION);
@@ -61,12 +61,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const data = await window.apiService.fetchInitData();
       allMembers = data.members || window.INITIAL_MEMBERS || [];
-      currentRankings = data.rankings || [];
-      console.log(`[App] Loaded ${allMembers.length} members successfully.`);
+      // GASまたはローカルから最新ランキングを読み込み
+      currentRankings = data.rankings || window.apiService.getLocalRankings() || [];
+      console.log(`[App] Loaded ${allMembers.length} members, ${currentRankings.length} ranking records.`);
     } catch (err) {
       console.error('[App] Failed to load data:', err);
       allMembers = window.INITIAL_MEMBERS || [];
-      currentRankings = window.INITIAL_RANKINGS || [];
+      currentRankings = window.apiService.getLocalRankings() || [];
     } finally {
       dom.loadingIndicator.classList.add('hidden');
       dom.btnStart.disabled = false;
@@ -111,11 +112,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  dom.btnBackTitle.addEventListener('click', () => {
+  dom.btnBackTitle.addEventListener('click', async () => {
     dom.screenResult.classList.add('hidden');
     dom.screenPlay.classList.add('hidden');
     dom.screenTitle.classList.remove('hidden');
-    renderRankings(); // 最新ランキング再描画
+    await loadData(); // 最新ランキング再読み込み・描画
   });
 
   // 6. キーボード入力の監視
@@ -152,11 +153,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 7. ランキング描画
   function renderRankings() {
-    const rankings = window.apiService.getLocalRankings();
+    const rankings = currentRankings.length > 0 ? currentRankings : window.apiService.getLocalRankings();
     
     // 個人ランキング
-    if (rankings.length === 0) {
-      dom.rankingSoloList.innerHTML = `<div class="ranking-empty">まだスコア記録がありません</div>`;
+    if (!rankings || rankings.length === 0) {
+      dom.rankingSoloList.innerHTML = `<div class="ranking-empty">まだスコア記録がありません。プレイしてランキング1位を目指そう！</div>`;
     } else {
       let soloHtml = `<table class="ranking-table"><thead><tr><th>順位</th><th>プレイヤー</th><th>部署</th><th>スコア</th><th>正答率</th></tr></thead><tbody>`;
       rankings.slice(0, 10).forEach((r, idx) => {
@@ -178,7 +179,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 部署対抗ランキング（平均スコア算出）
     const deptScores = {};
-    rankings.forEach(r => {
+    (rankings || []).forEach(r => {
       const d = r.player_dept || '未設定';
       if (!deptScores[d]) deptScores[d] = { total: 0, count: 0, highest: 0 };
       deptScores[d].total += Number(r.score);
@@ -214,6 +215,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       dom.rankingDeptList.innerHTML = deptHtml;
     }
   }
+
 
   // ランキングタブ切り替え
   dom.rankingTabs.forEach(tab => {

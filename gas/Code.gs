@@ -189,7 +189,8 @@ function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('⚡ 学友打 管理メニュー')
     .addItem('🚀 名簿データ140名を自動構築・投入', 'setupInitialSheetsWithCsvData')
-    .addItem('🔗 次回起動時にphoto_urlからDrive IDを自動抽出', 'extractDriveIdsFromPhotoUrls')
+    .addItem('🗑️ Rankingsのスコア記録を全消去（リセット）', 'clearRankingsSheet')
+    .addItem('🔗 photo_urlからDrive IDを自動抽出', 'extractDriveIdsFromPhotoUrls')
     .addItem('🖼️ Google Driveフォルダから画像を自動同期', 'updateDrivePhotoUrls')
     .addToUi();
 }
@@ -356,28 +357,44 @@ s26k2076ha@chibatech.ac.jp,早川未桜,早川,未桜,はやかわみお,Hayakaw
   // Membersシートに書き込み
   mSheet.getRange(1, 1, values.length, values[0].length).setValues(values);
 
-  // 2. Rankings シートの作成
+  // 2. Rankings シートの作成（初期データは空）
   let rSheet = ss.getSheetByName('Rankings');
   if (!rSheet) {
     rSheet = ss.insertSheet('Rankings');
     rSheet.getRange('A1:E1').setValues([[
       'timestamp', 'player_name', 'player_dept', 'score', 'accuracy'
     ]]);
-    // サンプルランキングデータ
-    rSheet.getRange('A2:E9').setValues([
-      [new Date(), '坂井綾太', '福祉', 1850, 98.4],
-      [new Date(), '福原出雲', '福祉', 1720, 96.8],
-      [new Date(), '川上丈琉', '総務', 1650, 95.2],
-      [new Date(), '佐藤志帆', '渉外', 1580, 97.1],
-      [new Date(), '石川夏輝', '財務', 1520, 94.5],
-      [new Date(), '北村界翔', '広報', 1490, 93.0],
-      [new Date(), '青木遼斗', '厚生', 1430, 91.8],
-      [new Date(), '林朋花', '企画', 1380, 96.0]
-    ]);
   }
 
-  const msg = `✅ セットアップ完了！\nMembersシートに名簿140名、Rankingsシートを正常に作成しました。`;
+  const msg = `✅ セットアップ完了！\nMembersシートに名簿140名、Rankingsシート（空）を正常に作成しました。`;
   if (typeof SpreadsheetApp.getUi === 'function') {
+    ui.alert(msg);
+  } else {
+    Logger.log(msg);
+  }
+}
+
+/**
+ * Rankingsシートのスコア記録を全消去して空にする関数
+ */
+function clearRankingsSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Rankings');
+  const ui = SpreadsheetApp.getUi();
+  
+  if (!sheet) {
+    ui.alert('Rankings シートが存在しません。');
+    return;
+  }
+
+  sheet.clear();
+  sheet.getRange('A1:E1').setValues([[
+    'timestamp', 'player_name', 'player_dept', 'score', 'accuracy'
+  ]]);
+  
+  ui.alert('✅ Rankings シートのスコア記録をすべてリセットしました！');
+}
+
     try {
       SpreadsheetApp.getUi().alert(msg);
     } catch(e) {
