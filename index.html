@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学友打（がくゆうだ！）- 学友会タイピングゲーム</title>
+  <meta name="description" content="学友会メンバーの顔・名前・所属をタイピング形式で楽しく覚えるWebアプリケーション">
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="css/components.css">
+  
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+</head>
+<body>
+  <div class="app-container">
+    <!-- ヘッダー -->
+    <header class="app-header">
+      <div class="logo-wrap">
+        <span class="logo-badge">CIT</span>
+        <h1 class="logo-title">学友打！</h1>
+      </div>
+      <div class="header-controls">
+        <button id="btn-toggle-sound" class="btn btn-outline" title="効果音のON/OFF">🔊 SOUND ON</button>
+        <button id="btn-open-settings" class="btn btn-outline" title="GAS連携設定">⚙️ 設定</button>
+      </div>
+    </header>
+
+    <!-- ==================== 1. タイトル・モード選択画面 ==================== -->
+    <main id="screen-title" class="screen">
+      <div class="title-hero">
+        <div class="hero-main-title">学友打！</div>
+        <div class="hero-sub-title">学友会メンバーの顔と名前をタイピングで完全マスター</div>
+      </div>
+
+      <!-- 難易度選択タブ -->
+      <div class="mode-tabs">
+        <button class="mode-tab" data-mode="practice">🌱 練習 (90s)</button>
+        <button class="mode-tab is-active" data-mode="standard">⚡ 本番 (60s)</button>
+        <button class="mode-tab" data-mode="hard">🔥 本気 (45s)</button>
+      </div>
+      <div id="mode-description" class="mode-description">
+        ⚡ 制限時間60秒 / ひらがな・ローマ字表示ありの標準本番モード
+      </div>
+
+      <!-- 部署コース選択 -->
+      <div class="courses-section">
+        <div class="stat-label">出題コースを選択</div>
+        <div class="courses-grid">
+          <div class="course-card is-selected" data-dept="ALL">
+            <div class="course-card-icon">🌟</div>
+            <div class="course-card-name">全メンバー</div>
+            <div class="course-card-count">140名</div>
+          </div>
+          <div class="course-card" data-dept="福祉">
+            <div class="course-card-icon">🤝</div>
+            <div class="course-card-name">福祉</div>
+            <div class="course-card-count">19名</div>
+          </div>
+          <div class="course-card" data-dept="総務">
+            <div class="course-card-icon">📋</div>
+            <div class="course-card-name">総務</div>
+            <div class="course-card-count">24名</div>
+          </div>
+          <div class="course-card" data-dept="渉外">
+            <div class="course-card-icon">🌐</div>
+            <div class="course-card-name">渉外</div>
+            <div class="course-card-count">19名</div>
+          </div>
+          <div class="course-card" data-dept="財務">
+            <div class="course-card-icon">💰</div>
+            <div class="course-card-name">財務</div>
+            <div class="course-card-count">18名</div>
+          </div>
+          <div class="course-card" data-dept="広報">
+            <div class="course-card-icon">📢</div>
+            <div class="course-card-name">広報</div>
+            <div class="course-card-count">21名</div>
+          </div>
+          <div class="course-card" data-dept="厚生">
+            <div class="course-card-icon">🛡️</div>
+            <div class="course-card-name">厚生</div>
+            <div class="course-card-count">17名</div>
+          </div>
+          <div class="course-card" data-dept="企画">
+            <div class="course-card-icon">💡</div>
+            <div class="course-card-name">企画</div>
+            <div class="course-card-count">22名</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- スタートボタン -->
+      <div class="title-actions">
+        <button id="btn-start-game" class="btn btn-primary btn-large">
+          START (Space / Enter)
+        </button>
+        <div id="title-loading" class="title-loading hidden">メンバーデータを同期中...</div>
+      </div>
+
+      <!-- ランキング表示 -->
+      <div class="title-ranking-section">
+        <div class="ranking-nav">
+          <div class="ranking-title">🏆 ハイスコアランキング</div>
+          <div class="ranking-tabs">
+            <button class="ranking-tab is-active" data-type="solo">個人総合</button>
+            <button class="ranking-tab" data-type="dept">部署対抗</button>
+          </div>
+        </div>
+        <div id="ranking-solo-view">
+          <div id="ranking-solo-list"></div>
+        </div>
+        <div id="ranking-dept-view" class="hidden">
+          <div id="ranking-dept-list"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ==================== 2. カウントダウン画面 ==================== -->
+    <div id="screen-countdown" class="countdown-screen hidden">
+      <div id="countdown-number" class="countdown-num">3</div>
+    </div>
+
+    <!-- ==================== 3. プレイ画面 ==================== -->
+    <main id="screen-play" class="screen hidden">
+      <!-- プレイヘッダー -->
+      <div class="play-header">
+        <div class="play-stat-box">
+          <span class="stat-label">TIME</span>
+          <span id="play-timer-text" class="stat-val timer-val">60</span>
+        </div>
+
+        <div id="play-combo-wrap" class="play-combo-box hidden">
+          <div id="play-combo-text" class="combo-num">0</div>
+          <div class="combo-label">COMBO</div>
+        </div>
+
+        <div class="play-stat-box" style="text-align: right;">
+          <span class="stat-label">SCORE</span>
+          <span id="play-score-text" class="stat-val score-val">0</span>
+        </div>
+      </div>
+
+      <!-- プログレスバー -->
+      <div class="progress-bar-container">
+        <div id="play-timer-bar" class="progress-bar-inner"></div>
+      </div>
+
+      <!-- メイン出題カード -->
+      <div class="play-main-card">
+        <div id="play-time-bonus" class="time-bonus-notice hidden">+2s Bonus!</div>
+
+        <!-- 顔写真 -->
+        <div class="avatar-card">
+          <img id="play-avatar" src="images/default_avatar.svg" alt="メンバー顔写真" onerror="this.src='images/default_avatar.svg'" />
+        </div>
+
+        <!-- 漢字・所属バッジ -->
+        <div class="member-info-block">
+          <h2 id="play-kanji" class="member-kanji">坂井 綾太</h2>
+          <div class="member-badges">
+            <span id="play-dept-badge" class="badge-dept">福祉</span>
+            <span id="play-grade-badge" class="badge-grade">4回生</span>
+          </div>
+          <div id="play-detail-info" class="member-detail-info">工学部 機械電子創成工学科</div>
+        </div>
+
+        <!-- タイピングガイド入力部 -->
+        <div id="play-typing-container" class="typing-guide-box">
+          <div id="play-kana" class="typing-kana">さかい りょうた</div>
+          <div class="typing-romaji-line">
+            <span id="play-romaji-typed" class="romaji-typed"></span><span id="play-romaji-remaining" class="romaji-remaining">sakai ryouta</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ==================== 4. リザルト・復習・スコア登録画面 ==================== -->
+    <main id="screen-result" class="screen hidden">
+      <div class="result-hero">
+        <h2 class="result-main-title">GAME FINISHED!</h2>
+        <div id="result-rank-title" class="result-rank-badge">【S】学友会マスター</div>
+        <div id="result-rank-desc" class="result-rank-desc">役員の顔と名前が完全に頭に入っています！</div>
+      </div>
+
+      <!-- スコア統計グリッド -->
+      <div class="result-stats-grid">
+        <div class="result-stat-card">
+          <div class="result-stat-label">FINAL SCORE</div>
+          <div id="result-score" class="result-stat-val result-score-highlight">0</div>
+        </div>
+        <div class="result-stat-card">
+          <div class="result-stat-label">ACCURACY</div>
+          <div id="result-accuracy" class="result-stat-val">0.0%</div>
+        </div>
+        <div class="result-stat-card">
+          <div class="result-stat-label">CLEARED</div>
+          <div id="result-cleared-count" class="result-stat-val">0 名</div>
+        </div>
+        <div class="result-stat-card">
+          <div class="result-stat-label">KPM (打鍵/分)</div>
+          <div id="result-kpm" class="result-stat-val">0</div>
+        </div>
+        <div class="result-stat-card">
+          <div class="result-stat-label">MAX COMBO</div>
+          <div id="result-max-combo" class="result-stat-val">0</div>
+        </div>
+      </div>
+
+      <!-- 復習セクション -->
+      <div class="review-section">
+        <div id="review-list-container"></div>
+      </div>
+
+      <!-- スコア登録フォーム -->
+      <div class="score-reg-card">
+        <div class="score-reg-title">📝 ランキングにスコアを記録する</div>
+        <div class="score-reg-form">
+          <select id="reg-dept" class="reg-select">
+            <option value="">部署を選択</option>
+          </select>
+          <select id="reg-name" class="reg-select" disabled>
+            <option value="">氏名を選択</option>
+          </select>
+          <button id="btn-save-score" class="btn btn-primary">スコアを登録</button>
+        </div>
+        <div id="reg-status-msg" class="reg-msg"></div>
+      </div>
+
+      <!-- アクションボタン -->
+      <div class="result-actions">
+        <button id="btn-retry-game" class="btn btn-primary btn-large">もう一度プレイ</button>
+        <button id="btn-back-title" class="btn btn-secondary">タイトルに戻る</button>
+      </div>
+    </main>
+
+    <!-- ==================== 5. 設定モーダル（GAS連携） ==================== -->
+    <div id="settings-modal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <h3 style="margin-bottom: 16px; font-size: 1.3rem;">⚙️ システム・GAS連携設定</h3>
+        <div class="form-group">
+          <label class="form-label">Google Apps Script (GAS) Web App URL</label>
+          <input type="text" id="input-gas-url" class="form-input" placeholder="https://script.google.com/macros/s/.../exec">
+          <div class="form-help">
+            デプロイしたGASのWebアプリURLを入力すると、Googleスプレッドシートとリアルタイムに同期します。（空欄の場合は内蔵データで動作）
+          </div>
+        </div>
+        <div id="gas-status-text" class="form-help" style="margin-bottom: 20px; font-weight: 600;"></div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+          <button id="btn-close-settings" class="btn btn-secondary">閉じる</button>
+          <button id="btn-save-gas-url" class="btn btn-primary">保存して同期</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- フッター -->
+    <footer class="app-footer">
+      <div>&copy; 2026 学友会「学友打！」プロジェクト - チームコンペ夏</div>
+    </footer>
+  </div>
+
+  <!-- スクリプト -->
+  <script src="js/mock-data.js"></script>
+  <script src="js/typing-engine.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/review.js"></script>
+  <script src="js/game-manager.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

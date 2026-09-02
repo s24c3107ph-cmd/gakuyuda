@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="avatarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  <rect width="240" height="240" rx="32" fill="url(#bgGrad)" stroke="#334155" stroke-width="2"/>
+  <circle cx="120" cy="88" r="42" fill="url(#avatarGrad)" opacity="0.85" filter="url(#glow)"/>
+  <path d="M48 206 C48 156, 80 148, 120 148 C160 148, 192 156, 192 206 Z" fill="url(#avatarGrad)" opacity="0.85" filter="url(#glow)"/>
+  <circle cx="120" cy="120" r="110" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="2" stroke-dasharray="6 6"/>
+</svg>
