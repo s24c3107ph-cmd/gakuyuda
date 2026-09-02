@@ -326,12 +326,6 @@ class GameManager {
     const isCorrect = this.typingEngine.inputKey(key);
 
     if (isCorrect) {
-      // 最初の正解打鍵で自動的に名前をリビールする
-      if (!this.isNameRevealed && this.mode !== 'practice') {
-        this.isNameRevealed = true;
-        this.renderProblemUI();
-      }
-
       // 正解打鍵
       this.totalCorrectKeys++;
       this.combo++;
