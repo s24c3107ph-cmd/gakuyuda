@@ -76,14 +76,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       currentMode = tab.dataset.mode;
       window.gameManager.setMode(currentMode);
 
-      // モード説明の更新
+      // モード説明の更新（発表原稿に準拠）
       const descEl = document.getElementById('mode-description');
       if (currentMode === 'practice') {
-        descEl.textContent = '⏱ 制限時間90秒 / 漢字・ひらがな・ローマ字・所属情報すべて表示の練習モード';
+        descEl.textContent = '🌱 制限時間90秒 / 顔写真＋名前＋所属をすべて表示。まずはここから覚えよう！';
       } else if (currentMode === 'hard') {
-        descEl.textContent = '🔥 制限時間45秒 / 写真と漢字のみ表示（ひらがな・ローマ字非表示）の上級者モード';
+        descEl.textContent = '🔥 制限時間45秒 / 顔写真のみ表示。ノーヒントで名前を答える究極モード！';
       } else {
-        descEl.textContent = '⚡ 制限時間60秒 / ひらがな・ローマ字表示ありの標準本番モード';
+        descEl.textContent = '⚡ 制限時間60秒 / 部署・学年ヒントあり。写真を見て名前を思い出してタイピング！';
       }
     });
   });
@@ -140,11 +140,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       // ファンクションキーや修飾キーを除外
-      if (e.key.length === 1 || e.key === 'Backspace' || e.key === ' ') {
-        if (e.key !== 'Backspace') {
-          e.preventDefault();
-          window.gameManager.handleKeyPress(e.key);
-        }
+      if (e.key.length === 1 || e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        window.gameManager.handleKeyPress(e.key);
       }
     } else if (!dom.screenTitle.classList.contains('hidden')) {
       // タイトル画面でSpaceまたはEnterでゲーム開始
