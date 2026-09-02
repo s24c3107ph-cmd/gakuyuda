@@ -213,9 +213,32 @@ class GameManager {
     const isPractice = this.mode === 'practice';
     const isHard = this.mode === 'hard';
 
-    // 顔写真
-    const imgUrl = window.apiService.resolveImageUrl(m);
-    this.dom.memberAvatar.src = imgUrl;
+    // 顔写真（ローカル → Drive → デフォルトの順でフォールバック）
+    const imgResult = window.apiService.resolveImageUrl(m);
+    const imgEl = this.dom.memberAvatar;
+    imgEl.onerror = null; // リセット
+
+    if (imgResult.localCandidates && imgResult.localCandidates.length > 0) {
+      let candidateIndex = 0;
+      const tryNext = () => {
+        if (candidateIndex < imgResult.localCandidates.length) {
+          imgEl.src = imgResult.localCandidates[candidateIndex++];
+        } else if (imgResult.driveUrl) {
+          imgEl.onerror = () => { imgEl.src = imgResult.fallback; imgEl.onerror = null; };
+          imgEl.src = imgResult.driveUrl;
+        } else {
+          imgEl.src = imgResult.fallback;
+          imgEl.onerror = null;
+        }
+      };
+      imgEl.onerror = tryNext;
+      tryNext();
+    } else if (imgResult.driveUrl) {
+      imgEl.onerror = () => { imgEl.src = imgResult.fallback; imgEl.onerror = null; };
+      imgEl.src = imgResult.driveUrl;
+    } else {
+      imgEl.src = imgResult.fallback || 'images/default_avatar.svg';
+    }
 
     // 漢字
     this.dom.memberKanji.textContent = m.kanji;

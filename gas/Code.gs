@@ -98,9 +98,11 @@ function handleInitData() {
         const driveUrlsRaw = (row[colMap['drive_urls'] ?? 16] || '').toString();
         
         let driveUrls = driveUrlsRaw ? driveUrlsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
-        if (driveUrls.length === 0 && photoUrl.includes('id=')) {
-          const m = photoUrl.match(/id=([a-zA-Z0-9_-]+)/);
-          if (m) driveUrls.push(m[1]);
+        
+        // drive_urls が空の場合、photo_url から id= を自動抽出して補完
+        if (driveUrls.length === 0 && photoUrl) {
+          const m = photoUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+          if (m && m[1]) driveUrls.push(m[1]);
         }
 
         members.push({
@@ -114,6 +116,7 @@ function handleInitData() {
           photo_url: photoUrl,
           drive_urls: driveUrls
         });
+
       }
     }
   }
@@ -186,7 +189,8 @@ function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('⚡ 学友打 管理メニュー')
     .addItem('🚀 名簿データ140名を自動構築・投入', 'setupInitialSheetsWithCsvData')
-    .addItem('🖼️ Google Drive画像URLを自動同期', 'updateDrivePhotoUrls')
+    .addItem('🔗 次回起動時にphoto_urlからDrive IDを自動抽出', 'extractDriveIdsFromPhotoUrls')
+    .addItem('🖼️ Google Driveフォルダから画像を自動同期', 'updateDrivePhotoUrls')
     .addToUi();
 }
 
@@ -380,6 +384,55 @@ s26k2076ha@chibatech.ac.jp,早川未桜,早川,未桜,はやかわみお,Hayakaw
       Logger.log(msg);
     }
   }
+}
+
+/**
+ * 既存のphoto_url列にある「https://drive.google.com/uc?export=view&id=FILE_ID」形式から
+ * Drive FileIDを抽出し、drive_urls 列に自動記入する関数
+ */
+function extractDriveIdsFromPhotoUrls() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Members');
+  const ui = SpreadsheetApp.getUi();
+  
+  if (!sheet) {
+    ui.alert('エラー: Members シートが見つかりません。');
+    return;
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  let photoUrlCol = headers.indexOf('photo_url');
+  // ヘッダーにスペースがある場合も考慮
+  if (photoUrlCol === -1) {
+    photoUrlCol = headers.findIndex(h => h.toString().trim() === 'photo_url');
+  }
+  if (photoUrlCol === -1) photoUrlCol = 15; // デフォルト列
+
+  let driveUrlsCol = headers.indexOf('drive_urls');
+  if (driveUrlsCol === -1) {
+    driveUrlsCol = headers.length;
+    sheet.getRange(1, driveUrlsCol + 1).setValue('drive_urls');
+  }
+
+  let updated = 0;
+  for (let i = 1; i < data.length; i++) {
+    const photoUrl = (data[i][photoUrlCol] || '').toString().trim();
+    const existingDriveUrls = (data[i][driveUrlsCol] || '').toString().trim();
+    
+    // 既に drive_urls が記入されている場合はスキップ
+    if (existingDriveUrls) continue;
+    
+    // photo_url から id= を抽出
+    const match = photoUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      sheet.getRange(i + 1, driveUrlsCol + 1).setValue(match[1]);
+      updated++;
+    }
+  }
+  
+  ui.alert(`完了: ${updated} 名分のDrive IDを drive_urls 列に書き込みました！`);
 }
 
 /**

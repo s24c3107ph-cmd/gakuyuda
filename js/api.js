@@ -114,8 +114,32 @@ class ApiService {
 
   /**
    * 画像URLをDirect View可能な形式に整形
+   * 優先順位: ① ローカル顔写真フォルダ（images/faces/氏名.*）
+   *          ② Google Drive Thumbnail API
+   *          ③ デフォルトアバター
    */
   resolveImageUrl(member) {
+    // ① ローカル画像フォルダ（images/faces/）から名前で検索
+    //    ファイル名の候補: 「坂井綾太.jpg」「坂井綾太.jpeg」「坂井綾太.png」など
+    if (member.kanji) {
+      const name = member.kanji.replace(/\s+/g, ''); // スペース除去
+      const exts = ['jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG'];
+      // candidateはgame起動時にまとめてリクエストするのではなく
+      // もっとも一般的な拡張子でURLを生成し、imgタグのonerrorで次の形式を試みる方式にする
+      return {
+        localCandidates: exts.map(ext => `images/faces/${name}.${ext}`),
+        driveUrl: this._resolveDriveUrl(member),
+        fallback: 'images/default_avatar.svg'
+      };
+    }
+    return {
+      localCandidates: [],
+      driveUrl: this._resolveDriveUrl(member),
+      fallback: 'images/default_avatar.svg'
+    };
+  }
+
+  _resolveDriveUrl(member) {
     if (member.drive_urls && member.drive_urls.length > 0) {
       const randomDriveId = member.drive_urls[Math.floor(Math.random() * member.drive_urls.length)];
       return `https://drive.google.com/thumbnail?id=${randomDriveId}&sz=w600`;
@@ -123,15 +147,13 @@ class ApiService {
     if (member.drive_id) {
       return `https://drive.google.com/thumbnail?id=${member.drive_id}&sz=w600`;
     }
-
     if (member.photo_url && member.photo_url.includes('id=')) {
-      const m = member.photo_url.match(/id=([a-zA-Z0-9_-]+)/);
+      const m = member.photo_url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
       if (m) {
         return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w600`;
       }
     }
-
-    return 'images/default_avatar.svg';
+    return null;
   }
 }
 
